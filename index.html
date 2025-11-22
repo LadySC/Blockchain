@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UTP Certificados - V19 (Versión Limpia)</title>
+    <title>UTP Certificados - Conectado al Backend</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -14,24 +14,13 @@
     
     <style>
         body { font-family: 'Inter', sans-serif; }
-        
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #999; transition: background 0.3s; }
-
-        /* Animaciones */
         .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-        
-        .bar-fill { animation: fillBar 1.5s ease-out forwards; width: 0%; }
-        @keyframes fillBar { to { width: 80%; } }
-
-        .delay-100 { animation-delay: 100ms; }
-        .delay-200 { animation-delay: 200ms; }
-        .delay-300 { animation-delay: 300ms; }
-        .delay-500 { animation-delay: 500ms; }
+        .bar-fill { transition: stroke-dashoffset 1.5s ease-out; }
     </style>
 </head>
 <body class="bg-slate-50 text-gray-800">
@@ -39,9 +28,13 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
+        
+        // --- CONFIGURACIÓN API ---
+        // Asegúrate de que tu backend NestJS tenga habilitado CORS para el puerto de este HTML
+        const API_URL = 'http://localhost:3000/certificates';
 
-        // --- ICONOS ---
+        // --- ICONOS (Sin cambios) ---
         const Icons = {
             Mail: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>,
             Lock: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
@@ -57,17 +50,15 @@
             Download: ({className}) => <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
             Search: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Qr: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="14" y="3" rx="1"/><rect width="5" height="5" x="14" y="14" rx="1"/><rect width="5" height="5" x="3" y="14" rx="1"/><path d="M10 17h4"/><path d="M17 17h4"/><path d="M10 7h4"/></svg>,
-            Bell: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>,
             UserCircle: ({className}) => <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>,
-            Globe: ({className}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
             Cpu: ({className}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>,
             CheckCircle: ({className}) => <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-            Chart: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
             Users: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
             Award: ({className}) => <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
         };
 
-        // --- HEADER ---
+        // --- COMPONENTS ---
+
         const PublicHeader = ({ activePage, onNavigate }) => (
             <header className="bg-white/90 backdrop-blur-md border-b border-gray-200 h-16 w-full flex items-center justify-between px-6 fixed top-0 z-50 shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-2 cursor-pointer group" onClick={() => onNavigate('login')}>
@@ -75,8 +66,8 @@
                     <span className="font-bold text-gray-800 text-lg tracking-tight">UTP Certificados</span>
                 </div>
                 <nav className="flex gap-2 text-sm font-medium text-gray-500 h-full items-center">
-                    <button onClick={() => onNavigate('public_verify')} className={`h-full relative px-4 transition-all duration-300 hover:text-red-600 flex items-center rounded-md hover:bg-red-50 ${activePage === 'public_verify' ? 'text-red-600 font-bold' : ''}`}>Verificar{activePage === 'public_verify' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 rounded-t-full fade-in-up"></span>}</button>
-                    <button onClick={() => onNavigate('emission_info')} className={`h-full relative px-4 transition-all duration-300 hover:text-red-600 flex items-center rounded-md hover:bg-red-50 ${activePage === 'emission_info' ? 'text-red-600 font-bold' : ''}`}>Emisión{activePage === 'emission_info' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 rounded-t-full fade-in-up"></span>}</button>
+                    <button onClick={() => onNavigate('public_verify')} className={`h-full relative px-4 transition-all duration-300 hover:text-red-600 flex items-center rounded-md hover:bg-red-50 ${activePage === 'public_verify' ? 'text-red-600 font-bold' : ''}`}>Verificar</button>
+                    <button onClick={() => onNavigate('emission_info')} className={`h-full relative px-4 transition-all duration-300 hover:text-red-600 flex items-center rounded-md hover:bg-red-50 ${activePage === 'emission_info' ? 'text-red-600 font-bold' : ''}`}>Emisión</button>
                 </nav>
                 <div className="flex gap-4 items-center text-gray-400">
                      <button onClick={() => onNavigate('login')} className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-all font-medium text-sm bg-gray-100 hover:bg-red-50 px-3 py-2 rounded-full" title="Ir al Login"><Icons.UserCircle className="w-5 h-5"/> <span>Acceder</span></button>
@@ -84,7 +75,6 @@
             </header>
         );
 
-        // 1. LOGIN
         const LoginScreen = ({ onLogin }) => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -98,11 +88,9 @@
                         <p className="text-center text-gray-500 text-sm mb-8">Accede a tu expediente académico descentralizado.</p>
                         {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center border border-red-100 font-semibold">{error}</div>}
                         <form className="space-y-5" onSubmit={handleSubmit}>
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Correo Institucional</label><div className="relative group"><div className="absolute left-3 top-3 text-gray-400 group-focus-within:text-red-600 transition-colors"><Icons.Mail/></div><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@utp.edu.pe" className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" required /></div></div>
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Contraseña</label><div className="relative group"><div className="absolute left-3 top-3 text-gray-400 group-focus-within:text-red-600 transition-colors"><Icons.Lock/></div><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" required /></div><div className="text-right mt-2"><a href="#" className="text-xs text-red-600 font-semibold hover:text-red-800 transition-colors">¿Olvidaste tu contraseña?</a></div></div>
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Correo Institucional</label><div className="relative group"><div className="absolute left-3 top-3 text-gray-400 group-focus-within:text-red-600 transition-colors"><Icons.Mail/></div><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@utp.edu.pe" className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" required /></div></div>
+                            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Contraseña</label><div className="relative group"><div className="absolute left-3 top-3 text-gray-400 group-focus-within:text-red-600 transition-colors"><Icons.Lock/></div><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" required /></div></div>
                             <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-red-200">Iniciar Sesión</button>
-                            <div className="relative py-3"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-400 font-bold">O continuar con</span></div></div>
-                            <button type="button" className="w-full bg-white border-2 border-gray-100 hover:border-red-100 hover:bg-red-50 text-gray-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"><div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold">U</div> UTP ID</button>
                         </form>
                         <div className="mt-8 flex items-center justify-center gap-2 text-gray-400 text-xs font-medium"><Icons.ShieldCheck className="w-4 h-4 text-green-500"/><span>Secured by UTP Blockchain</span></div>
                     </div>
@@ -110,85 +98,156 @@
             );
         };
 
-        // 2. EMISIÓN INFO (Landing)
+        // 2. VERIFICACIÓN PÚBLICA (CONECTADO AL BACKEND)
+        const VerifyScreen = ({ onNavigate }) => {
+            const [hashInput, setHashInput] = useState('');
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            const handleSearch = async () => {
+                if (!hashInput) return;
+                setLoading(true);
+                setError('');
+                setResult(null);
+
+                try {
+                    // GET /certificates/:hash
+                    const response = await fetch(`${API_URL}/${hashInput}`);
+                    if (!response.ok) throw new Error('Certificado no encontrado');
+                    
+                    const data = await response.json();
+                    // Backend devuelve: { "nombre": "...", "curso": "...", "fecha": "..." }
+                    setResult(data);
+                } catch (err) {
+                    setError('No se encontró ningún certificado con ese Hash o ID.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-red-50 flex flex-col pt-16 relative overflow-hidden">
+                    <main className="flex-1 flex flex-col items-center justify-center px-4 text-center z-10 py-12">
+                        <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[2rem] shadow-2xl border border-white/50 max-w-xl w-full fade-in-up">
+                            <div className="w-24 h-24 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/30"><Icons.ShieldCheck className="w-12 h-12 text-white" /></div>
+                            <h1 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Validador Oficial</h1>
+                            <p className="text-gray-500 mb-10 text-lg leading-relaxed">Consulte la integridad de un certificado académico.</p>
+                            
+                            <div className="space-y-6">
+                                <div className="relative group">
+                                    <div className="absolute left-5 top-4 text-gray-400"><Icons.Search className="w-6 h-6" /></div>
+                                    <input 
+                                        type="text" 
+                                        value={hashInput}
+                                        onChange={(e) => setHashInput(e.target.value)}
+                                        placeholder="Pegar Hash del Certificado" 
+                                        className="w-full pl-14 pr-4 py-4 border-2 border-gray-100 rounded-2xl bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-800 font-medium text-lg shadow-sm" 
+                                    />
+                                </div>
+                                <button 
+                                    onClick={handleSearch}
+                                    disabled={loading}
+                                    className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl"
+                                >
+                                    {loading ? 'Verificando...' : 'Verificar Ahora'}
+                                </button>
+                            </div>
+
+                            {/* RESULTADO DE LA BÚSQUEDA */}
+                            {error && <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl font-medium animate-pulse">{error}</div>}
+                            
+                            {result && (
+                                <div className="mt-8 text-left bg-green-50 border border-green-200 p-6 rounded-2xl fade-in-up">
+                                    <div className="flex items-center gap-2 mb-4 text-green-700 font-bold">
+                                        <Icons.CheckCircle className="w-6 h-6"/> Certificado Válido
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between border-b border-green-100 pb-2">
+                                            <span className="text-gray-500 text-sm">Estudiante</span>
+                                            <span className="font-bold text-gray-800">{result.nombre}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-green-100 pb-2">
+                                            <span className="text-gray-500 text-sm">Curso/Título</span>
+                                            <span className="font-bold text-gray-800">{result.curso}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 text-sm">Fecha Emisión</span>
+                                            <span className="font-bold text-gray-800">{result.fecha}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        // 3. EMISIÓN INFO (Landing)
         const EmissionInfoScreen = ({ onNavigate }) => (
             <div className="min-h-screen bg-slate-50 pt-16">
                 <div className="bg-gradient-to-br from-red-700 to-red-900 text-white py-24 px-6 text-center relative overflow-hidden pb-48">
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                     <div className="relative z-10 max-w-4xl mx-auto fade-in-up">
-                        <div className="inline-block px-4 py-1 mb-4 border border-red-400 rounded-full bg-red-800/50 backdrop-blur-sm text-xs font-semibold tracking-wide uppercase">Tecnología Blockchain V3.0</div>
-                        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight">Credenciales <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-200 to-white">Inmutables</span></h1>
-                        <p className="text-red-100/90 text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-light">Certificación académica de próxima generación impulsada por tecnología blockchain descentralizada.</p>
-                        <button onClick={() => onNavigate('login')} className="bg-white text-red-900 font-extrabold py-4 px-10 rounded-full shadow-2xl hover:shadow-white/20 hover:bg-gray-50 transition-all transform hover:-translate-y-1 flex items-center gap-2 mx-auto"><span>Acceder al Portal Administrativo</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></button>
+                        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">Credenciales <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-200 to-white">Inmutables</span></h1>
+                        <p className="text-red-100/90 text-xl max-w-2xl mx-auto mb-10">Certificación académica impulsada por blockchain.</p>
+                        <button onClick={() => onNavigate('login')} className="bg-white text-red-900 font-extrabold py-4 px-10 rounded-full shadow-2xl hover:shadow-white/20 hover:bg-gray-50 transition-all flex items-center gap-2 mx-auto"><span>Acceder al Portal</span></button>
                     </div>
                 </div>
-                <div className="max-w-6xl mx-auto px-6 -mt-32 relative z-20">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 fade-in-up delay-100 border-t-4 border-blue-500 group hover:-translate-y-2"><div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-sm"><Icons.FileText className="w-8 h-8" /></div><h3 className="text-xl font-bold text-gray-900 mb-3">Generación Digital</h3><p className="text-gray-500 leading-relaxed text-sm">Firma criptográfica de documentos académicos garantizando la autoría institucional.</p></div>
-                        <div className="bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 fade-in-up delay-200 border-t-4 border-purple-500 group hover:-translate-y-2"><div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors shadow-sm"><Icons.Cpu className="w-8 h-8" /></div><h3 className="text-xl font-bold text-gray-900 mb-3">Consenso Blockchain</h3><p className="text-gray-500 leading-relaxed text-sm">Anclaje de hash en la red distribuida, haciendo imposible la falsificación o alteración.</p></div>
-                        <div className="bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 fade-in-up delay-300 border-t-4 border-teal-500 group hover:-translate-y-2"><div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mb-6 group-hover:bg-teal-600 group-hover:text-white transition-colors shadow-sm"><Icons.CheckCircle className="w-8 h-8" /></div><h3 className="text-xl font-bold text-gray-900 mb-3">Verificación Universal</h3><p className="text-gray-500 leading-relaxed text-sm">Validación instantánea y global sin necesidad de intermediarios.</p></div>
-                    </div>
-                </div>
-                <div className="mt-20 bg-slate-900 py-16 text-white"><div className="max-w-6xl mx-auto px-6"><div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-slate-800"><div className="fade-in-up delay-100"><div className="text-4xl font-bold text-red-500 mb-2">50K+</div><div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Credenciales</div></div><div className="fade-in-up delay-200"><div className="text-4xl font-bold text-blue-400 mb-2">100%</div><div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Disponibilidad</div></div><div className="fade-in-up delay-300"><div className="text-4xl font-bold text-green-400 mb-2">0.5s</div><div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Tiempo Valid.</div></div><div className="fade-in-up delay-400"><div className="text-4xl font-bold text-purple-400 mb-2">256</div><div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Cifrado AES</div></div></div></div></div>
-                <footer className="bg-slate-50 border-t border-slate-200 py-8 text-center text-slate-400 text-sm">© 2025 Universidad Tecnológica del Perú. Todos los derechos reservados.</footer>
             </div>
         );
 
-        // 3. VERIFICACIÓN
-        const VerifyScreen = ({ onNavigate }) => (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-red-50 flex flex-col pt-16 relative overflow-hidden">
-                <div className="absolute top-20 left-20 w-96 h-96 bg-indigo-300/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-20 right-20 w-96 h-96 bg-red-300/20 rounded-full blur-3xl animate-pulse delay-500"></div>
-                <main className="flex-1 flex flex-col items-center justify-center px-4 text-center z-10 py-12">
-                    <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[2rem] shadow-2xl border border-white/50 max-w-xl w-full fade-in-up transition-all duration-300 hover:shadow-indigo-200/50">
-                        <div className="w-24 h-24 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/30 fade-in-up delay-100 transform transition-transform hover:rotate-3"><Icons.ShieldCheck className="w-12 h-12 text-white" /></div>
-                        <h1 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight fade-in-up delay-200">Validador Oficial</h1>
-                        <p className="text-gray-500 mb-10 text-lg leading-relaxed fade-in-up delay-300">Consulte la integridad de un certificado académico en la red Blockchain.</p>
-                        <div className="space-y-6 fade-in-up delay-400">
-                            <div className="relative group"><div className="absolute left-5 top-4 text-gray-400 group-focus-within:text-indigo-600 transition-colors duration-300"><Icons.Search className="w-6 h-6" /></div><input type="text" placeholder="Pegar ID del Certificado (ej. 0xabcd...)" className="w-full pl-14 pr-4 py-4 border-2 border-gray-100 rounded-2xl bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-300 outline-none text-gray-800 font-medium text-lg shadow-sm" /></div>
-                            <div className="relative flex py-3 items-center"><div className="flex-grow border-t border-gray-200"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-bold uppercase tracking-wider text-[10px]">O escanear código</span><div className="flex-grow border-t border-gray-200"></div></div>
-                            <button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:shadow-2xl text-lg"><Icons.Qr className="w-6 h-6" /> Activar Cámara</button>
-                        </div>
-                         <div className="pt-8 mt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-gray-400 text-sm font-medium fade-in-up delay-500"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span>Nodo Verificador Activo</span></div>
-                    </div>
-                </main>
-            </div>
-        );
-
-        // 4. STUDENT DASHBOARD
+        // 4. STUDENT DASHBOARD (CONECTADO AL BACKEND)
         const StudentDashboard = ({ onLogout, onNavigate }) => {
-            const certificates = [
-                { name: 'CISCO y Redes', status: 'Emitido', date: '2025-08-15', action: true },
-                { name: 'Desarrollo Fullstack', status: 'Emitido', date: '2025-05-10', action: true },
-                { name: 'Scrum Fundamentals', status: 'Emitido', date: '2024-11-20', action: true },
-                { name: 'Inglés Técnico II', status: 'Emitido', date: '2024-08-15', action: true },
-                { name: 'Blockchain Av.', status: 'Pendiente', date: '2025-09-20', action: false }
-            ];
-            const total = certificates.length;
-            const issued = certificates.filter(c => c.status === 'Emitido').length;
-            const percentage = Math.round((issued / total) * 100);
+            const [certificates, setCertificates] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            // Fetch certificados del Backend
+            useEffect(() => {
+                fetch(API_URL)
+                    .then(res => res.json())
+                    .then(data => {
+                        setCertificates(data);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error("Error fetching certificates", err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            // Simulación de estadística
+            const total = certificates.length || 0; 
+            const percentage = total > 0 ? 100 : 0; 
 
             return (
                 <div className="flex h-screen bg-gray-50 fade-in-up">
                     <aside className="w-72 bg-slate-900 text-white flex flex-col hidden md:flex mt-0 z-10 shadow-2xl">
-                        <div className="p-8 flex items-center gap-4 border-b border-slate-800"><div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg">JM</div><div><h3 className="text-base font-bold text-white">Jorge Membrillo</h3><p className="text-xs text-slate-400 font-mono mt-1">ID: 22229151</p></div></div>
+                        <div className="p-8 flex items-center gap-4 border-b border-slate-800"><div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg">JM</div><div><h3 className="text-base font-bold text-white">Estudiante</h3><p className="text-xs text-slate-400 font-mono mt-1">Panel</p></div></div>
                         <nav className="flex-1 px-4 space-y-3 py-8">
-                            <button onClick={() => onNavigate('dashboard')} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium bg-red-600 text-white shadow-lg shadow-red-900/20 transition-all hover:scale-105"><Icons.Dashboard /> Dashboard</button>
-                            <button onClick={() => onNavigate('certificates')} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"><Icons.FileText /> Certificados</button>
-                            <button onClick={() => onNavigate('profile')} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"><Icons.User /> Mi Perfil</button>
+                            <button onClick={() => onNavigate('dashboard')} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium bg-red-600 text-white shadow-lg"><Icons.Dashboard /> Dashboard</button>
+                            <button onClick={() => onNavigate('certificates')} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white"><Icons.FileText /> Certificados</button>
                         </nav>
-                        <div className="p-6 border-t border-slate-800"><button onClick={onLogout} className="flex items-center gap-3 text-slate-400 text-sm hover:text-red-400 w-full transition-colors px-4 py-3 rounded-xl hover:bg-slate-800/50 font-medium"><Icons.Logout /> Cerrar Sesión</button></div>
+                        <div className="p-6 border-t border-slate-800"><button onClick={onLogout} className="flex items-center gap-3 text-slate-400 text-sm hover:text-red-400 w-full transition-colors px-4 py-3 rounded-xl font-medium"><Icons.Logout /> Cerrar Sesión</button></div>
                     </aside>
                     <main className="flex-1 p-10 overflow-y-auto bg-slate-50/50 relative z-0">
                         <div className="flex justify-between items-center mb-10"><h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Dashboard</h1><button onClick={onLogout} className="md:hidden text-red-600 text-sm font-bold">Salir</button></div>
+                        
+                        {loading ? <p>Cargando certificados...</p> : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                                <div className="flex justify-between items-center mb-8"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-3 border-l-4 border-red-600 pl-4">Mis Certificados Recientes</h2><button onClick={() => onNavigate('certificates')} className="text-red-600 font-bold text-sm hover:underline">Ver Todos</button></div>
+                                <div className="flex justify-between items-center mb-8"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-3 border-l-4 border-red-600 pl-4">Mis Certificados</h2></div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left text-slate-600"><thead className="text-xs text-slate-400 font-bold uppercase bg-slate-50/50 tracking-wider"><tr><th className="px-6 py-4 rounded-l-xl">Nombre</th><th className="px-6 py-4">Estado</th><th className="px-6 py-4">Fecha</th><th className="px-6 py-4 rounded-r-xl">Acción</th></tr></thead>
+                                    <table className="w-full text-sm text-left text-slate-600"><thead className="text-xs text-slate-400 font-bold uppercase bg-slate-50/50 tracking-wider"><tr><th className="px-6 py-4 rounded-l-xl">Curso</th><th className="px-6 py-4">Nombre</th><th className="px-6 py-4">Fecha</th><th className="px-6 py-4 rounded-r-xl">Acción</th></tr></thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {certificates.slice(0,3).map((cert, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors"><td className="px-6 py-6 font-bold text-slate-800">{cert.name}</td><td className="px-6 py-6"><span className="px-4 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-600">Emitido</span></td><td className="px-6 py-6 text-slate-500">{cert.date}</td><td className="px-6 py-6"><button className="text-indigo-600 font-bold text-xs bg-indigo-50 px-4 py-2.5 rounded-lg" onClick={() => onNavigate('details')}>Ver Detalle</button></td></tr>
+                                            {certificates.length === 0 && <tr><td colSpan="4" className="p-4 text-center">No hay certificados.</td></tr>}
+                                            {certificates.map((cert, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-6 py-6 font-bold text-slate-800">{cert.curso}</td>
+                                                    <td className="px-6 py-6 text-slate-600">{cert.nombre}</td>
+                                                    <td className="px-6 py-6 text-slate-500">{cert.fecha}</td>
+                                                    <td className="px-6 py-6"><button className="text-indigo-600 font-bold text-xs bg-indigo-50 px-4 py-2.5 rounded-lg" onClick={() => onNavigate('details', cert)}>Ver</button></td>
+                                                </tr>
                                             ))}
                                         </tbody>
                                     </table>
@@ -196,37 +255,36 @@
                             </div>
                             <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col justify-center items-center text-center">
                                 <h2 className="text-xl font-bold text-slate-800 mb-8 self-start border-l-4 border-transparent pl-4">Progreso Global</h2>
-                                <div className="relative w-56 h-56 mb-8"><svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="8" fill="none" /><circle cx="50" cy="50" r="40" stroke="#e11d48" strokeWidth="8" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * percentage) / 100} strokeLinecap="round" className="bar-fill" /></svg><div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"><span className="text-5xl font-extrabold text-slate-800 block">{percentage}%</span></div></div>
-                                <p className="text-slate-500 text-sm font-medium px-6 leading-relaxed">Has completado <span className="text-slate-900 font-bold">{issued}</span> de <span className="text-slate-900 font-bold">{total}</span> módulos.</p>
+                                <div className="relative w-56 h-56 mb-8"><svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="8" fill="none" /><circle cx="50" cy="50" r="40" stroke="#e11d48" strokeWidth="8" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * percentage) / 100} strokeLinecap="round" className="bar-fill" /></svg><div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"><span className="text-5xl font-extrabold text-slate-800 block">{total}</span></div></div>
+                                <p className="text-slate-500 text-sm font-medium px-6 leading-relaxed">Has obtenido <span className="text-slate-900 font-bold">{total}</span> credenciales.</p>
                             </div>
                         </div>
+                        )}
                     </main>
                 </div>
             );
         };
 
-        // 5. STUDENT CERTIFICATES (NUEVA PANTALLA)
+        // 5. STUDENT CERTIFICATES (FULL LIST)
         const StudentCertificates = ({ onBack, onNavigate }) => {
-            const allCertificates = [
-                { name: 'CISCO y Redes', date: '15 Ago 2025', type: 'Curso', status: 'Emitido' },
-                { name: 'Desarrollo Fullstack', date: '10 May 2025', type: 'Diplomado', status: 'Emitido' },
-                { name: 'Scrum Fundamentals', date: '20 Nov 2024', type: 'Certificación', status: 'Emitido' },
-                { name: 'Inglés Técnico II', date: '15 Ago 2024', type: 'Idioma', status: 'Emitido' },
-                { name: 'Blockchain Avanzado', date: '20 Sep 2025', type: 'Especialización', status: 'Pendiente' },
-                { name: 'Cloud Computing AWS', date: '-- -- ----', type: 'Curso', status: 'En Curso' }
-            ];
+            const [certificates, setCertificates] = useState([]);
+
+            useEffect(() => {
+                fetch(API_URL).then(res => res.json()).then(data => setCertificates(data)).catch(console.error);
+            }, []);
+
             return (
                 <div className="min-h-screen bg-slate-50 fade-in-up">
-                    <header className="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center shadow-sm"><div className="flex items-center gap-3 font-bold text-2xl text-slate-800 cursor-pointer" onClick={onBack}><div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md">U</div> UTP</div><button onClick={onBack} className="text-sm font-bold text-slate-500 hover:text-red-600 transition-colors bg-slate-100 hover:bg-red-50 px-5 py-2.5 rounded-full">Volver al Dashboard</button></header>
+                    <header className="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center shadow-sm"><div className="flex items-center gap-3 font-bold text-2xl text-slate-800 cursor-pointer" onClick={onBack}><div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md">U</div> UTP</div><button onClick={onBack} className="text-sm font-bold text-slate-500 hover:text-red-600 transition-colors bg-slate-100 hover:bg-red-50 px-5 py-2.5 rounded-full">Volver</button></header>
                     <main className="max-w-7xl mx-auto p-10">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4"><div><h1 className="text-4xl font-extrabold text-slate-900 mb-2">Historial de Certificaciones</h1><p className="text-slate-500">Gestiona y descarga tus credenciales académicas.</p></div><div className="relative w-full md:w-72"><input type="text" placeholder="Buscar certificado..." className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-red-500 outline-none text-sm"/><div className="absolute left-3 top-3 text-slate-400"><Icons.Search className="w-5 h-5"/></div></div></div>
+                        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4"><div><h1 className="text-4xl font-extrabold text-slate-900 mb-2">Historial de Certificaciones</h1></div></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {allCertificates.map((cert, idx) => (
+                            {certificates.map((cert, idx) => (
                                 <div key={idx} className="bg-white p-6 rounded-[2rem] shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100 group hover:-translate-y-1">
-                                    <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${cert.status === 'Emitido' ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'}`}><Icons.Award className="w-8 h-8" /></div><span className={`px-3 py-1 rounded-full text-xs font-bold border ${cert.status === 'Emitido' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>{cert.status}</span></div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-1 leading-tight">{cert.name}</h3>
-                                    <p className="text-sm text-slate-500 mb-4">{cert.type} • {cert.date}</p>
-                                    <div className="pt-4 border-t border-slate-50 flex gap-3">{cert.status === 'Emitido' ? (<><button onClick={() => onNavigate('details')} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md">Ver Credencial</button><button className="p-2.5 rounded-xl border-2 border-slate-100 hover:border-red-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"><Icons.Download className="w-5 h-5"/></button></>) : (<div className="w-full py-2.5 bg-slate-50 rounded-xl text-center text-sm font-bold text-slate-400 italic cursor-not-allowed">No disponible</div>)}</div>
+                                    <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-green-50 text-green-600`}><Icons.Award className="w-8 h-8" /></div><span className={`px-3 py-1 rounded-full text-xs font-bold border bg-green-100 text-green-700 border-green-200`}>Emitido</span></div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-1 leading-tight">{cert.curso}</h3>
+                                    <p className="text-sm text-slate-500 mb-4">{cert.nombre} • {cert.fecha}</p>
+                                    <div className="pt-4 border-t border-slate-50 flex gap-3"><button onClick={() => onNavigate('details', cert)} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md">Ver Credencial</button></div>
                                 </div>
                             ))}
                         </div>
@@ -235,153 +293,134 @@
             );
         };
 
-        // 6. STUDENT PROFILE
-        const StudentProfile = ({ onBack }) => (
-            <div className="min-h-screen bg-slate-50 fade-in-up">
-                <header className="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center shadow-sm"><div className="flex items-center gap-3 font-bold text-2xl text-slate-800 cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}><div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md">U</div> UTP</div><button onClick={onBack} className="text-sm font-bold text-slate-500 hover:text-red-600 transition-colors bg-slate-100 hover:bg-red-50 px-5 py-2.5 rounded-full">Volver al Dashboard</button></header>
-                <main className="max-w-4xl mx-auto p-10">
-                    <h1 className="text-3xl font-extrabold text-slate-900 mb-8 fade-in-up delay-100">Mi Perfil Académico</h1>
-                    <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden fade-in-up delay-200">
-                        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-red-900 h-48 w-full relative pattern-bg"></div>
-                        <div className="px-10 pb-10">
-                            <div className="relative flex justify-between items-end -mt-20 mb-10">
-                                <div className="bg-white p-3 rounded-2xl shadow-2xl inline-flex items-center gap-4 pr-8 transform hover:-translate-y-1 transition-transform duration-300">
-                                    <div className="w-20 h-20 bg-red-600 rounded-xl flex items-center justify-center text-white font-bold text-4xl shadow-inner">U</div>
-                                    <div><div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Estudiante</div><span className="font-bold text-slate-900 text-2xl">UTP Certificados</span></div>
-                                </div>
-                                <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">Editar Información</button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                <div>
-                                    <h3 className="text-3xl font-extrabold text-slate-900 mb-2">Jorge Membrillo</h3>
-                                    <p className="text-slate-500 text-lg mb-8 font-medium">Ingeniería de Sistemas</p>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center p-4 bg-slate-50 rounded-xl border border-slate-100"><span className="text-slate-400 w-24 font-bold text-xs uppercase">ID Estudiante</span> <span className="font-bold text-slate-800 text-lg">22229151</span></div>
-                                        <div className="flex items-center p-4 bg-slate-50 rounded-xl border border-slate-100"><span className="text-slate-400 w-24 font-bold text-xs uppercase">Email</span> <span className="font-bold text-slate-800 text-lg">alumno@utp.edu.pe</span></div>
-                                        <div className="flex items-center p-4 bg-slate-50 rounded-xl border border-slate-100"><span className="text-slate-400 w-24 font-bold text-xs uppercase">Campus</span> <span className="font-bold text-slate-800 text-lg">Lima Centro</span></div>
-                                    </div>
-                                </div>
-                                <div className="bg-indigo-50 p-8 rounded-3xl border border-indigo-100 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-200 rounded-full blur-3xl opacity-50 -mr-10 -mt-10"></div>
-                                    <h4 className="font-bold text-indigo-900 text-lg mb-4 flex items-center gap-2 relative z-10"><Icons.ShieldCheck className="w-6 h-6 text-indigo-600"/> Identidad Digital</h4>
-                                    <div className="text-xs text-indigo-400 mb-2 font-bold uppercase tracking-widest relative z-10">Wallet Address</div>
-                                    <div className="font-mono text-sm bg-white p-4 rounded-xl border border-indigo-100 text-slate-600 break-all shadow-sm relative z-10 mb-4">0x71C7656EC7ab88b098defB751B7401B5f6d89A23</div>
-                                    <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold relative z-10"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Activa y Verificada</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        );
+        // 6. DETALLES CERTIFICADO (DINÁMICO)
+        const CertificateDetails = ({ onBack, data }) => {
+            // Si no hay data, volver (seguridad simple)
+            if (!data) return <div className="p-10 text-center"><p>Cargando...</p><button onClick={onBack} className="text-blue-500 underline">Volver</button></div>;
 
-        // 7. DETALLES CERTIFICADO
-        const CertificateDetails = ({ onBack }) => (
-            <div className="min-h-screen bg-slate-50 fade-in-up">
-                <header className="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center shadow-sm"><div className="flex items-center gap-3 font-bold text-2xl text-slate-800 cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}><div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md">U</div> UTP</div><button onClick={onBack} className="text-sm font-bold text-slate-500 hover:text-red-600 transition-colors bg-slate-100 hover:bg-red-50 px-5 py-2.5 rounded-full">Volver al Dashboard</button></header>
-                <main className="max-w-6xl mx-auto p-10">
-                    <div className="mb-10 flex items-end gap-4"><h1 className="text-4xl font-extrabold text-slate-900">Certificado Digital</h1><span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold mb-2 border border-green-200">Válido</span></div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                        <div className="md:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-12 flex flex-col relative overflow-hidden shadow-2xl shadow-slate-200/50">
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
-                            <div className="flex-1 flex flex-col items-center justify-center text-center mb-8">
-                                <div className="mb-6 p-6 bg-blue-50 rounded-3xl transform hover:scale-105 transition-transform"><svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg></div>
-                                <h2 className="text-5xl font-extrabold tracking-tight text-blue-900 mb-2">Blockchain Verified</h2>
-                                <p className="text-slate-500 font-medium">Registro inmutable y seguro</p>
+            return (
+                <div className="min-h-screen bg-slate-50 fade-in-up">
+                    <header className="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center shadow-sm"><div className="flex items-center gap-3 font-bold text-2xl text-slate-800 cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}><div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md">U</div> UTP</div><button onClick={onBack} className="text-sm font-bold text-slate-500 hover:text-red-600 transition-colors bg-slate-100 hover:bg-red-50 px-5 py-2.5 rounded-full">Volver</button></header>
+                    <main className="max-w-6xl mx-auto p-10">
+                        <div className="mb-10 flex items-end gap-4"><h1 className="text-4xl font-extrabold text-slate-900">Certificado Digital</h1><span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold mb-2 border border-green-200">Válido</span></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                            <div className="md:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-12 flex flex-col relative overflow-hidden shadow-2xl shadow-slate-200/50">
+                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+                                <div className="flex-1 flex flex-col items-center justify-center text-center mb-8">
+                                    <div className="mb-6 p-6 bg-blue-50 rounded-3xl"><Icons.Award className="w-20 h-20 text-blue-600" /></div>
+                                    <h2 className="text-4xl font-extrabold tracking-tight text-blue-900 mb-2">{data.curso}</h2>
+                                    <p className="text-slate-500 font-medium text-xl">{data.nombre}</p>
+                                </div>
+                                <div className="w-full mt-auto pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                                    <div className="text-left"><div className="flex items-center gap-3 text-red-600 font-bold mb-2 text-xl"><Icons.ShieldCheck className="w-7 h-7"/><span>Blockchain Verified</span></div><p className="text-sm text-slate-500 font-medium leading-relaxed max-w-md">Registrado permanentemente en la red.</p></div>
+                                    <button className="bg-red-600 text-white px-8 py-4 rounded-2xl text-sm font-bold flex items-center gap-3 shadow-lg hover:bg-red-700 transition-all"><Icons.Download className="w-5 h-5" /> Descargar</button>
+                                </div>
                             </div>
-                            <div className="w-full mt-auto pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                                <div className="text-left"><div className="flex items-center gap-3 text-red-600 font-bold mb-2 text-xl"><Icons.ShieldCheck className="w-7 h-7"/><span>Blockchain Verified Certificate</span></div><p className="text-sm text-slate-500 font-medium leading-relaxed max-w-md">Este certificado es auténtico, inmutable y queda registrado permanentemente en Blockchain.</p></div>
-                                <button className="bg-red-600 text-white px-8 py-4 rounded-2xl text-sm font-bold flex items-center gap-3 shadow-lg shadow-red-900/20 hover:bg-red-700 hover:scale-105 transition-all active:scale-95 whitespace-nowrap"><Icons.Download className="w-5 h-5" /> Descargar</button>
+                            <div className="space-y-8">
+                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-8 text-center">
+                                    <h3 className="font-bold text-slate-900 text-xl mb-4">Verificación</h3>
+                                    <p className="text-slate-500 text-sm mb-6 font-medium">Escanee el código QR para validar.</p>
+                                    <div className="bg-teal-500/10 p-8 rounded-3xl mb-6 flex justify-center items-center"><div className="bg-white p-4 rounded-2xl shadow-sm"><Icons.Qr className="w-24 h-24 text-slate-900" /></div></div>
+                                    <div className="text-xs text-slate-400 font-bold uppercase">Hash: {data.hash || 'Generado por Backend'}</div>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-3 bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-10">
+                                <h3 className="font-bold text-slate-900 text-xl mb-8">Detalles de Verificación</h3>
+                                <div className="divide-y divide-slate-100">
+                                    <div className="flex justify-between py-5"><span className="text-slate-500 font-bold uppercase">Curso</span><span className="font-bold text-slate-900">{data.curso}</span></div>
+                                    <div className="flex justify-between py-5"><span className="text-slate-500 font-bold uppercase">Estudiante</span><span className="font-bold text-slate-900">{data.nombre}</span></div>
+                                    <div className="flex justify-between py-5"><span className="text-slate-500 font-bold uppercase">Fecha</span><span className="font-bold text-slate-900">{data.fecha}</span></div>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-8">
-                            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 text-center hover:shadow-2xl transition-all duration-300">
-                                <h3 className="font-bold text-slate-900 text-xl mb-4">Verificación del empleador</h3>
-                                <p className="text-slate-500 text-sm mb-6 font-medium">Escanee el código QR para verificar la autenticidad de este certificado al instante.</p>
-                                <div className="bg-teal-500/10 p-8 rounded-3xl mb-6 flex justify-center items-center group"><div className="bg-white p-4 rounded-2xl shadow-sm transform group-hover:scale-105 transition-transform"><Icons.Qr className="w-24 h-24 text-slate-900" /></div></div>
-                                <div className="text-xs text-slate-400 font-bold flex items-center justify-center gap-2 uppercase tracking-wider"><Icons.Lock className="w-4 h-4" /> Powered by SecureChain</div>
-                            </div>
-                        </div>
-                        <div className="lg:col-span-3 bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10 hover:shadow-2xl transition-all duration-300">
-                            <h3 className="font-bold text-slate-900 text-xl mb-8">Detalles de Verificación</h3>
-                            <div className="divide-y divide-slate-100">
-                                <div className="flex flex-col md:flex-row justify-between py-5 gap-2"><span className="text-slate-500 font-bold text-sm uppercase tracking-wider">ID del Certificado</span><span className="font-bold text-slate-900">#1234567890</span></div>
-                                <div className="flex flex-col md:flex-row justify-between py-5 gap-2"><span className="text-slate-500 font-bold text-sm uppercase tracking-wider">Blockchain Hash</span><span className="font-mono text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 overflow-hidden text-ellipsis whitespace-nowrap max-w-full md:max-w-lg">0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890</span></div>
-                                <div className="flex flex-col md:flex-row justify-between py-5 gap-2"><span className="text-slate-500 font-bold text-sm uppercase tracking-wider">Emitido por</span><span className="font-bold text-slate-900">Universidad Tecnológica del Perú</span></div>
-                                <div className="flex flex-col md:flex-row justify-between py-5 gap-2"><span className="text-slate-500 font-bold text-sm uppercase tracking-wider">Emitido el</span><span className="font-bold text-slate-900">16 de Julio del 2024</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        );
+                    </main>
+                </div>
+            );
+        };
 
-        // 8. ADMIN DASHBOARD
+        // 7. ADMIN DASHBOARD (CONECTADO AL BACKEND POST)
         const AdminDashboard = ({ onLogout }) => {
             const [adminView, setAdminView] = useState('dashboard');
+            
+            // Estados para el formulario de emisión
+            const [form, setForm] = useState({ nombre: '', curso: '', fecha: '' });
+            const [message, setMessage] = useState('');
+
+            const handleInputChange = (e) => {
+                setForm({ ...form, [e.target.name]: e.target.value });
+            };
+
+            const handleIssue = async () => {
+                setMessage('');
+                try {
+                    // POST /certificates
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(form)
+                    });
+                    
+                    if(response.ok) {
+                        setMessage('¡Certificado emitido exitosamente!');
+                        setForm({ nombre: '', curso: '', fecha: '' });
+                    } else {
+                        setMessage('Error al emitir el certificado.');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    setMessage('Error de conexión con el servidor.');
+                }
+            };
+
             return (
                 <div className="flex h-screen bg-gray-50 fade-in-up">
                     <aside className="w-72 bg-slate-900 text-white flex flex-col py-6 hidden md:flex mt-0 z-10 shadow-2xl">
                         <div className="px-8 py-4 mb-6 flex items-center gap-3"><div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg">AD</div><div><h2 className="font-bold text-white text-lg">UTP Admin</h2><p className="text-xs text-slate-400">Panel de Control</p></div></div>
                         <nav className="px-4 space-y-3 flex-1">
-                            <button onClick={() => setAdminView('dashboard')} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium transition-all duration-200 ${adminView === 'dashboard' ? 'bg-red-600 text-white shadow-lg shadow-red-900/30 hover:bg-red-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Icons.Dashboard /> Dashboard</button>
-                            <button onClick={() => setAdminView('emision')} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium transition-all duration-200 ${adminView === 'emision' ? 'bg-red-600 text-white shadow-lg shadow-red-900/30 hover:bg-red-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Icons.Plus /> Emitir Credenciales</button>
+                            <button onClick={() => setAdminView('dashboard')} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium transition-all duration-200 ${adminView === 'dashboard' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Icons.Dashboard /> Dashboard</button>
+                            <button onClick={() => setAdminView('emision')} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-medium transition-all duration-200 ${adminView === 'emision' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Icons.Plus /> Emitir Credenciales</button>
                         </nav>
                         <div className="px-6 mt-auto"><button onClick={onLogout} className="flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 w-full text-left transition-all"><Icons.Logout /> Salir</button></div>
                     </aside>
                     <main className="flex-1 p-10 overflow-y-auto bg-slate-50/50 relative z-0">
                         <div className="mb-10 flex justify-between items-center fade-in-up delay-100">
-                            <div><h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">{adminView === 'dashboard' ? 'Resumen General' : 'Emisión de Nueva Microcredencial'}</h1><p className="text-slate-500 font-medium">{adminView === 'dashboard' ? 'Vista general del sistema y estadísticas.' : 'Complete el formulario para emitir un nuevo certificado en blockchain.'}</p></div>
+                            <div><h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">{adminView === 'dashboard' ? 'Resumen General' : 'Emisión de Certificado'}</h1><p className="text-slate-500 font-medium">Panel Administrativo conectado a Blockchain.</p></div>
                              <button onClick={onLogout} className="md:hidden text-red-600 text-sm font-bold">Salir</button>
                         </div>
+                        
                         {adminView === 'dashboard' && (
                             <div className="space-y-8 fade-in-up delay-200">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6"><div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><Icons.FileText className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Emitidos</p><h3 className="text-3xl font-extrabold text-slate-900">1,245</h3></div></div>
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6"><div className="p-4 bg-green-50 text-green-600 rounded-2xl"><Icons.CheckCircle className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Verificados Hoy</p><h3 className="text-3xl font-extrabold text-slate-900">85</h3></div></div>
-                                     <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Icons.Users className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Estudiantes Activos</p><h3 className="text-3xl font-extrabold text-slate-900">4,500</h3></div></div>
-                                </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 h-96 flex flex-col justify-center items-center relative overflow-hidden">
-                                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-                                        <div className="w-full h-full flex items-end justify-around px-4 pb-8 pt-12 space-x-2">
-                                            <div className="w-full bg-indigo-50 rounded-t-lg relative group h-[40%] bar-grow hover:bg-indigo-200 transition-all"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">120</div></div>
-                                            <div className="w-full bg-indigo-100 rounded-t-lg relative group h-[60%] bar-grow hover:bg-indigo-300 transition-all delay-100"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">240</div></div>
-                                            <div className="w-full bg-indigo-200 rounded-t-lg relative group h-[45%] bar-grow hover:bg-indigo-400 transition-all delay-200"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">180</div></div>
-                                            <div className="w-full bg-indigo-400 rounded-t-lg relative group h-[80%] bar-grow hover:bg-indigo-500 transition-all delay-300"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">350</div></div>
-                                            <div className="w-full bg-indigo-500 rounded-t-lg relative group h-[55%] bar-grow hover:bg-indigo-600 transition-all delay-400"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">210</div></div>
-                                            <div className="w-full bg-indigo-600 rounded-t-lg relative group h-[90%] bar-grow hover:bg-indigo-700 transition-all delay-500"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">400</div></div>
-                                        </div>
-                                        <div className="w-full flex justify-between px-4 text-xs font-bold text-slate-400"><span>MAY</span><span>JUN</span><span>JUL</span><span>AGO</span><span>SET</span><span>OCT</span></div>
-                                        <p className="text-slate-400 font-bold text-lg mt-4">Resumen de Emisiones</p>
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                                        <h3 className="font-bold text-slate-900 text-xl mb-6">Actividad Reciente</h3>
-                                        <ul className="space-y-4">
-                                            <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><Icons.CheckCircle className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Certificado Verificado</p><p className="text-xs text-slate-400">Hace 5 minutos • ID #9988</p></div></li>
-                                            <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><Icons.Plus className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Nueva Emisión</p><p className="text-xs text-slate-400">Hace 2 horas • Jorge M.</p></div></li>
-                                            <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center"><Icons.UserCircle className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Nuevo Estudiante</p><p className="text-xs text-slate-400">Hace 1 día • ID 2223...</p></div></li>
-                                        </ul>
-                                    </div>
+                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex items-center gap-6"><div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><Icons.FileText className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Emitidos</p><h3 className="text-3xl font-extrabold text-slate-900">--</h3></div></div>
+                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex items-center gap-6"><div className="p-4 bg-green-50 text-green-600 rounded-2xl"><Icons.CheckCircle className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Verificados</p><h3 className="text-3xl font-extrabold text-slate-900">--</h3></div></div>
                                 </div>
                             </div>
                         )}
+
                         {adminView === 'emision' && (
-                             <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-12 max-w-3xl hover:shadow-2xl transition-all duration-500 fade-in-up delay-200 relative overflow-hidden">
+                             <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-12 max-w-3xl fade-in-up delay-200 relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-600 to-red-800"></div>
-                                <form className="space-y-8">
-                                    <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">ID Estudiante</label><input type="text" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700" placeholder="Ej. 22229151"/></div>
-                                    <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tipo de Credencial</label><select className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700 appearance-none"><option>Selecciona el tipo de Credencial</option><option>Certificado de Curso</option><option>Microcredencial</option><option>Título Profesional</option></select></div>
-                                    <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Título de Credencial</label><input type="text" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700" placeholder="Ej. Desarrollo avanzado de blockchain"/></div>
-                                    <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Descripción</label><textarea rows="4" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700 resize-none" placeholder="Describe las habilidades adquiridas..."></textarea></div>
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Fecha de Emisión</label><input type="date" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700"/></div>
-                                        <div><label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Expiración (Opcional)</label><input type="date" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium text-lg text-slate-700"/></div>
+                                {message && <div className={`mb-6 p-4 rounded-xl text-center font-bold ${message.includes('Error') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{message}</div>}
+                                
+                                <div className="space-y-8">
+                                    {/* Campos ajustados al endpoint POST /certificates que espera { nombre, curso, fecha } */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Nombre del Estudiante</label>
+                                        <input name="nombre" value={form.nombre} onChange={handleInputChange} type="text" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 outline-none font-medium text-lg" placeholder="Ej. Juan Pérez"/>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Nombre del Curso/Certificado</label>
+                                        <input name="curso" value={form.curso} onChange={handleInputChange} type="text" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 outline-none font-medium text-lg" placeholder="Ej. Curso de Calidad de Software"/>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Fecha de Emisión</label>
+                                        <input name="fecha" value={form.fecha} onChange={handleInputChange} type="date" className="w-full px-6 py-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-indigo-500/20 outline-none font-medium text-lg"/>
+                                    </div>
+
                                     <div className="flex justify-end pt-8 border-t border-slate-100">
-                                        <button type="button" className="bg-red-600 hover:bg-red-700 text-white font-bold px-12 py-4 rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3 text-lg shadow-red-900/20"><Icons.Plus className="w-6 h-6"/> Emitir Credencial</button>
+                                        <button type="button" onClick={handleIssue} className="bg-red-600 hover:bg-red-700 text-white font-bold px-12 py-4 rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3 text-lg"><Icons.Plus className="w-6 h-6"/> Emitir Credencial</button>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         )}
                     </main>
@@ -392,21 +431,24 @@
         // === APP CONTROLLER ===
         const App = () => {
             const [view, setView] = useState('login');
+            const [selectedCert, setSelectedCert] = useState(null);
 
             const handleLogin = (email, password, setErrorCallback) => {
-                if (email === 'alumno@utp.edu.pe' && password === '123456') setView('student_dashboard');
-                else if (email === 'admin@utp.edu.pe' && password === 'admin123') setView('admin');
+                if ((email === 'alumno@utp.edu.pe' || email === 'admin@utp.edu.pe') && password.length > 3) {
+                    if(email.includes('admin')) setView('admin');
+                    else setView('student_dashboard');
+                }
                 else setTimeout(() => setErrorCallback('Credenciales incorrectas.'), 500);
             };
 
-            const handleNavigate = (target) => {
+            const handleNavigate = (target, data = null) => {
+                if (data) setSelectedCert(data);
                 if (target === 'details') setView('student_details');
-                if (target === 'profile') setView('student_profile');
-                if (target === 'public_verify') setView('public_verify');
-                if (target === 'certificates') setView('student_certificates');
-                if (target === 'emission_info') setView('emission_info');
-                if (target === 'dashboard') setView('student_dashboard');
-                if (target === 'login') setView('login');
+                else if (target === 'certificates') setView('student_certificates');
+                else if (target === 'public_verify') setView('public_verify');
+                else if (target === 'emission_info') setView('emission_info');
+                else if (target === 'dashboard') setView('student_dashboard');
+                else if (target === 'login') setView('login');
             };
 
             return (
@@ -420,9 +462,8 @@
                     {view === 'emission_info' && <EmissionInfoScreen onNavigate={handleNavigate} />}
                     
                     {view === 'student_dashboard' && <StudentDashboard onLogout={() => setView('login')} onNavigate={handleNavigate} />}
-                    {view === 'student_details' && <CertificateDetails onBack={() => handleNavigate('dashboard')} />}
+                    {view === 'student_details' && <CertificateDetails data={selectedCert} onBack={() => handleNavigate('dashboard')} />}
                     {view === 'student_certificates' && <StudentCertificates onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />}
-                    {view === 'student_profile' && <StudentProfile onBack={() => handleNavigate('dashboard')} />}
                     
                     {view === 'admin' && <AdminDashboard onLogout={() => setView('login')} />}
                 </div>
