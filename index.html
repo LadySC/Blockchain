@@ -342,9 +342,46 @@
         const AdminDashboard = ({ onLogout }) => {
             const [adminView, setAdminView] = useState('dashboard');
             
+            // --- NUEVOS ESTADOS PARA DATOS DEL DASHBOARD ---
+            const [stats, setStats] = useState({ emitidos: '--', verificados: '--' });
+            const [loadingStats, setLoadingStats] = useState(true);
+            // ------------------------------------------------
+
             // Estados para el formulario de emisión
             const [form, setForm] = useState({ nombre: '', curso: '', fecha: '' });
             const [message, setMessage] = useState('');
+
+            // --- LÓGICA PARA CARGAR DATOS DEL DASHBOARD ---
+            useEffect(() => {
+                const fetchStats = async () => {
+                    setLoadingStats(true);
+                    try {
+                        // Llama al endpoint principal para obtener la lista completa y contar.
+                        // En un entorno real, usarías un endpoint dedicado: /certificates/stats
+                        const res = await fetch(API_URL);
+                        const data = await res.json();
+                        const totalEmitidos = data.length;
+
+                        setStats({
+                            emitidos: totalEmitidos.toString(),
+                            verificados: totalEmitidos.toString() // Se asume que todo lo emitido es verificado
+                        });
+                        
+                    } catch (error) {
+                        console.error("Error fetching stats:", error);
+                        setStats({ emitidos: 'Error', verificados: 'Error' });
+                    } finally {
+                        setLoadingStats(false);
+                    }
+                };
+                
+                // Solo cargar si estamos en la vista de Dashboard
+                if (adminView === 'dashboard') {
+                    fetchStats();
+                }
+            }, [adminView]); // Se ejecuta al cargar el componente y cuando la vista cambia a 'dashboard'
+            // -------------------------------------------------
+
 
             const handleInputChange = (e) => {
                 setForm({ ...form, [e.target.name]: e.target.value });
@@ -352,6 +389,13 @@
 
             const handleIssue = async () => {
                 setMessage('');
+                
+                // Validación básica
+                if (!form.nombre || !form.curso || !form.fecha) {
+                    setMessage('Error: Todos los campos son obligatorios.');
+                    return;
+                }
+
                 try {
                     // POST /certificates
                     const response = await fetch(API_URL, {
@@ -363,6 +407,12 @@
                     if(response.ok) {
                         setMessage('¡Certificado emitido exitosamente!');
                         setForm({ nombre: '', curso: '', fecha: '' });
+                        // Actualizar stats después de una emisión exitosa (opcional, pero buena práctica)
+                        setStats(prev => ({ 
+                            ...prev, 
+                            emitidos: (parseInt(prev.emitidos) + 1).toString(),
+                            verificados: (parseInt(prev.verificados) + 1).toString()
+                        }));
                     } else {
                         setMessage('Error al emitir el certificado.');
                     }
@@ -389,13 +439,71 @@
                         </div>
                         
                         {adminView === 'dashboard' && (
-                            <div className="space-y-8 fade-in-up delay-200">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex items-center gap-6"><div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><Icons.FileText className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Emitidos</p><h3 className="text-3xl font-extrabold text-slate-900">--</h3></div></div>
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex items-center gap-6"><div className="p-4 bg-green-50 text-green-600 rounded-2xl"><Icons.CheckCircle className="w-8 h-8"/></div><div><p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Verificados</p><h3 className="text-3xl font-extrabold text-slate-900">--</h3></div></div>
-                                </div>
-                            </div>
-                        )}
+    <div className="space-y-8 fade-in-up delay-200">
+        {/* Fila de tarjetas de estadísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Tarjeta 1: Total Emitidos (DINÁMICO) */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6">
+                <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><Icons.FileText className="w-8 h-8"/></div>
+                <div>
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Emitidos</p>
+                    <h3 className="text-3xl font-extrabold text-slate-900">
+                        {loadingStats ? <span className="animate-pulse">...</span> : stats.emitidos}
+                    </h3>
+                </div>
+            </div>
+            
+            {/* Tarjeta 2: Verificados Hoy (ESTÁTICO) */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6">
+                <div className="p-4 bg-green-50 text-green-600 rounded-2xl"><Icons.CheckCircle className="w-8 h-8"/></div>
+                <div>
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Verificados Hoy</p>
+                    {/* He usado el valor estático '85' aquí, o puedes usar stats.verificados si lo quieres dinámico */}
+                    <h3 className="text-3xl font-extrabold text-slate-900">1</h3> 
+                </div>
+            </div>
+            
+            {/* Tarjeta 3: Estudiantes Activos (ESTÁTICO) */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 flex items-center gap-6">
+                <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Icons.Users className="w-8 h-8"/></div>
+                <div>
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Estudiantes Activos</p>
+                    <h3 className="text-3xl font-extrabold text-slate-900">4,500</h3>
+                </div>
+            </div>
+        </div>
+
+        {/* Fila inferior: Gráfico de barras y Actividad Reciente */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Columna 1-2: Gráfico de Emisiones (ESTÁTICO VISUAL) */}
+            <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 h-96 flex flex-col justify-center items-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                <div className="w-full h-full flex items-end justify-around px-4 pb-8 pt-12 space-x-2">
+                    <div className="w-full bg-indigo-50 rounded-t-lg relative group h-[40%] bar-grow hover:bg-indigo-200 transition-all"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">120</div></div>
+                    <div className="w-full bg-indigo-100 rounded-t-lg relative group h-[60%] bar-grow hover:bg-indigo-300 transition-all delay-100"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">240</div></div>
+                    <div className="w-full bg-indigo-200 rounded-t-lg relative group h-[45%] bar-grow hover:bg-indigo-400 transition-all delay-200"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">180</div></div>
+                    <div className="w-full bg-indigo-400 rounded-t-lg relative group h-[80%] bar-grow hover:bg-indigo-500 transition-all delay-300"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">350</div></div>
+                    <div className="w-full bg-indigo-500 rounded-t-lg relative group h-[55%] bar-grow hover:bg-indigo-600 transition-all delay-400"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">210</div></div>
+                    <div className="w-full bg-indigo-600 rounded-t-lg relative group h-[90%] bar-grow hover:bg-indigo-700 transition-all delay-500"><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">400</div></div>
+                </div>
+                <div className="w-full flex justify-between px-4 text-xs font-bold text-slate-400"><span>MAY</span><span>JUN</span><span>JUL</span><span>AGO</span><span>SET</span><span>OCT</span></div>
+                <p className="text-slate-400 font-bold text-lg mt-4">Resumen de Emisiones</p>
+            </div>
+            
+            {/* Columna 3: Actividad Reciente (ESTÁTICO VISUAL) */}
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                <h3 className="font-bold text-slate-900 text-xl mb-6">Actividad Reciente</h3>
+                <ul className="space-y-4">
+                    <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><Icons.CheckCircle className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Certificado Verificado</p><p className="text-xs text-slate-400">Hace 5 minutos • ID #9988</p></div></li>
+                    <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><Icons.Plus className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Nueva Emisión</p><p className="text-xs text-slate-400">Hace 2 horas • Jorge M.</p></div></li>
+                    <li className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-colors"><div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center"><Icons.UserCircle className="w-5 h-5"/></div><div><p className="font-bold text-slate-800 text-sm">Nuevo Estudiante</p><p className="text-xs text-slate-400">Hace 1 día • ID 2223...</p></div></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+)}
 
                         {adminView === 'emision' && (
                              <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-12 max-w-3xl fade-in-up delay-200 relative overflow-hidden">
@@ -430,15 +538,19 @@
 
         // === APP CONTROLLER ===
         const App = () => {
-            const [view, setView] = useState('login');
+            // Inicializamos en 'login' para empezar con la pantalla de acceso
+            const [view, setView] = useState('login'); 
             const [selectedCert, setSelectedCert] = useState(null);
 
             const handleLogin = (email, password, setErrorCallback) => {
-                if ((email === 'alumno@utp.edu.pe' || email === 'admin@utp.edu.pe') && password.length > 3) {
-                    if(email.includes('admin')) setView('admin');
-                    else setView('student_dashboard');
+                if (email === 'admin@utp.edu.pe' && password.length > 3) {
+                    setView('admin'); // Admin login
+                } else if (email === 'alumno@utp.edu.pe' && password.length > 3) {
+                    setView('student_dashboard'); // Student login
                 }
-                else setTimeout(() => setErrorCallback('Credenciales incorrectas.'), 500);
+                else {
+                    setTimeout(() => setErrorCallback('Credenciales incorrectas.'), 500);
+                }
             };
 
             const handleNavigate = (target, data = null) => {
